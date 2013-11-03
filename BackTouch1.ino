@@ -11,10 +11,10 @@
 
 
 // PIN defines
-#define YP A3  // must be an analog pin, use "An" notation! (Blue)
-#define XM A4  // must be an analog pin, use "An" notation! (White)
-#define YM A2   // can be a digital pin (Purple)
-#define XP A5   // can be a digital pin (Red)#define PIN_BACKLIGHT    10
+#define YP A5  // must be an analog pin, use "An" notation! (Blue)
+#define XM A2  // must be an analog pin, use "An" notation! (White)
+#define YM A4   // can be a digital pin (Purple)
+#define XP A3   // can be a digital pin (Red)#define PIN_BACKLIGHT    10
 
 #define PIN_BACKLIGHT     10
 
