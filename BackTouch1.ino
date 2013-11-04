@@ -52,6 +52,14 @@ int dx_t = 5; // dx threshold
 int sl_scrl = 5; // sleep after sending a scroll event
 int sl_nscrl = 10; // sleep after not sending a scroll event
 
+typedef enum 
+{
+  MODE_POINTER,
+  MODE_SCROLL,
+  MODE_LAST,
+} OperationModes;
+int cur_mode = MODE_SCROLL;
+
 
 
 
@@ -105,19 +113,31 @@ int LCD_action()
       dy_t--;
       lcd.print("dy_t = "); lcd.print(dy_t); lcd.print("      ");
       delay(200);
-  break;
+      break;
     }
     case btnSELECT:
     {
-      lcd.print("SELECT");
+      // switch operation mode
+      cur_mode++;
+      if (cur_mode == MODE_LAST) cur_mode = 0; // wrap around
+      lcd.print("MODE: ");
+      switch (cur_mode) {
+          case MODE_SCROLL:
+            lcd.print("SCROLL   ");
+            dy_t = 5;
+            break;
+          case MODE_POINTER:
+            lcd.print("POINTER  ");
+            dy_t = 1;
+            break;
+          default: 
+            break;
+            // do something
+      };
+      delay(500);
       break;
     }
   }
-
-  // Wait until no button is pressed
-  // while(read_LCD_buttons() != btnNONE);
-
-  // Just sleep
 
 }
 
@@ -145,6 +165,8 @@ void loop(void)
 
   int hz_scrl = 0;
   int vr_scrl = 0;
+  int pnt_dy = 0;
+  int pnt_dx = 0;
   // a point object holds x y and z coordinates
   Point p = ts.getPoint();
 
@@ -158,10 +180,19 @@ void loop(void)
 
   LCD_action();
   
+
+  // Click logic
+
+
   // we have some minimum pressure we consider 'valid'
   // pressure of 0 means no pressing!
   if (p.z > ts.pressureThreshhold) 
   {
+    if (Mouse.isPressed(1) == 0) 
+    {
+      Mouse.press(1);
+      Serial.print("****Press****\n");
+    }
 
     // Serial.print("X = "); Serial.print(p.x);
     // Serial.print("\tY = "); Serial.print(p.y);
@@ -180,46 +211,94 @@ void loop(void)
     Serial.print("\tDY = "); Serial.println(dy); 
 #endif
 
+  if (cur_mode == MODE_SCROLL) // Do thresholding on scroll mode
+  {
+      if (abs(dy) > dy_t)
+      {
+        if (dy>0) // positive dy
+        {
+          vr_scrl = 1; 
+        }
+        else
+        { 
+          vr_scrl = -1; // up scroll should be more responsive maybe
+        }
+      }
+
+      if (abs(dx) > dx_t)
+      {
+        if (dx>0) // positive dx
+        {
+          hz_scrl = 1; // move only one step
+        }
+        else
+        {
+          hz_scrl = -1;
+        }
+      }
+  }
+  else // POINTER MODE
+  {
     if (abs(dy) > dy_t)
-    {
-      if (dy>0) // positive dy
+    { 
+      if (dy > 0)
       {
-        vr_scrl = 1; 
-      }
+        pnt_dy = 5;
+
+      } 
       else
-      { 
-        vr_scrl = -1; // up scroll should be more responsive maybe
+      {
+
+        pnt_dy = -5;
+
       }
     }
 
-    if (abs(dx) > dx_t)
+    if (abs(dx) > dy_t)
     {
-      if (dx>0) // positive dx
+      pnt_dx = dx;
+    }
+    pnt_dx = 0;
+  }
+
+
+
+    if ((vr_scrl != 0) || (hz_scrl != 0) || (pnt_dy != 0) || (pnt_dx != 0)) // passed the threshold send scroll event
+    {
+ 
+      if (cur_mode == MODE_SCROLL)
       {
-        hz_scrl = 1; // move only one step
+        Mouse.move(0, 0, -vr_scrl, hz_scrl); // reverse scrolling on android
+        Serial.print("vr_scrl = "); Serial.print(vr_scrl);
+        Serial.print("\thz_scrl = "); Serial.println(hz_scrl);
       }
       else
       {
-        hz_scrl = -1;
+        Mouse.move(pnt_dx, pnt_dy,0,0); 
+        Serial.print("pnt_dx = "); Serial.print(pnt_dx);
+        Serial.print("\tpnt_dy = "); Serial.println(pnt_dy);
       }
-    }
-
-
-
-    if ((vr_scrl != 0) || (hz_scrl != 0)) // passed the threshold send scroll event
-    {
-      Serial.print("vr_scrl = "); Serial.print(vr_scrl);
-      Serial.print("\thz_scrl = "); Serial.println(hz_scrl);
-      Mouse.move(0, 0, -vr_scrl, hz_scrl); // reverse scrolling on android
       delay(sl_scrl);
     }
-    else // if we're not sending scroll event, just wait 5ms for next sample to be more precise
+    else // if ((vr_scrl != 0) || (hz_scrl != 0) || (pnt_dy != 0) || (pnt_dx != 0))
     {
       delay(sl_nscrl);
+    
     }
     
-    last_p = p;
+  last_p = p;
+  }
+  else //(p.z > ts.pressureThreshhold) 
+  {
+    if (Mouse.isPressed(1))
+    {
+      Mouse.release(1);
+      Serial.print("****Release****\n");
+
+    }
+
 
   }
 
 }
+
