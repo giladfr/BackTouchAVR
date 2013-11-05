@@ -31,7 +31,7 @@
 
 // Debug flags
 // #define TC_RAW_PRINT
-#define DELTA_PRINT
+//#define DELTA_PRINT
 
 // For better pressure precision, we need to know the resistance
 // between X+ and X- Use any multimeter to read it
@@ -61,7 +61,11 @@ typedef enum
 int cur_mode = MODE_POINTER; // default mode
 
 
-// Average
+// Average array
+#define AVG_NUM_OF_POINTS 10
+Point pnt_arr[AVG_NUM_OF_POINTS];
+#define AVG_SMART_DELTA   5
+
 
 
 
@@ -96,7 +100,7 @@ void CalcMovment_Scroll(int dx, int dy, int* hz_scrl, int *vr_scrl)
 
 void CalcMovment_Pointer(int dx, int dy,int* pnt_dx,int *pnt_dy)
 {
-  if (abs(dy) > dy_t)
+/*  if (abs(dy) > dy_t)
   {
     if (dy > 0)
     {
@@ -115,9 +119,87 @@ void CalcMovment_Pointer(int dx, int dy,int* pnt_dx,int *pnt_dy)
   {
     *pnt_dx = dx;
   }
-  *pnt_dx = 0;
+  *pnt_dx = 0;*/
+  
+  *pnt_dx = -dx;
+  *pnt_dy = dy;
 
 }
+
+Point CalcMovingAvg_Simple(Point inPnt)
+{
+  static int i = 0;
+  static int sum_x = 0;
+  static int sum_y = 0;
+  Point retPnt;
+
+  // Remove from sum the point in place i
+  sum_x = sum_x - pnt_arr[i].x;
+  sum_y = sum_y - pnt_arr[i].y;
+
+  // insert the current point
+  pnt_arr[i] = inPnt;
+
+  sum_x = sum_x + inPnt.x;
+  sum_y = sum_y + inPnt.y;
+  
+  retPnt.x = sum_x / AVG_NUM_OF_POINTS;
+  retPnt.y = sum_y / AVG_NUM_OF_POINTS;
+
+  i++;
+  if (i == AVG_NUM_OF_POINTS) i=0;
+
+  return retPnt;
+}
+
+// Assume movment is fluid and get rid of points more then a delta away
+Point CalcMovingAvg_Smart(Point inPnt)
+{
+  static int i = 0;
+  // static int last_x_avg;
+  static Point last_ret_pnt;
+  Point retPnt;
+
+
+  // insert the current instead of old point
+  pnt_arr[i] = inPnt;
+
+  // Calc Average for only the points that are closer then delta
+  int npnt_x = 0;
+  int npnt_y = 0;
+  int sum_x = 0;
+  int sum_y = 0;
+  Serial.print("i = "); Serial.println(i);
+  for (int j = 0;j < AVG_NUM_OF_POINTS; j++)
+  {
+    if (abs(pnt_arr[j].x - last_ret_pnt.x) < AVG_SMART_DELTA)
+    {
+      sum_x = sum_x + pnt_arr[j].x;
+      npnt_x++;
+    }
+    if (abs(pnt_arr[j].y - last_ret_pnt.y) < AVG_SMART_DELTA)
+    {
+      sum_y = sum_y + pnt_arr[j].y;
+      npnt_y++;
+    }
+  }
+  
+  Serial.print("sum_x = "); Serial.println(sum_x);
+  retPnt.x = sum_x / npnt_x;
+  retPnt.y = sum_y / npnt_y;
+
+  // Save the last returned point for filtering next time
+  last_ret_pnt = retPnt;
+
+
+  i++;
+  if (i == AVG_NUM_OF_POINTS) i=0;
+
+  return retPnt;
+}
+
+
+
 
 
 int read_LCD_buttons()
@@ -261,6 +343,8 @@ void loop(void)
     lcd.print(p.z);
     lcd.print("  ");
 
+    p = CalcMovingAvg_Simple(p);
+
 
     dx = last_p.x - p.x;
     dy = last_p.y - p.y;
@@ -288,6 +372,7 @@ void loop(void)
     if ((vr_scrl != 0) || (hz_scrl != 0) || (pnt_dy != 0) || (pnt_dx != 0)) // passed the threshold send scroll / move event
     {
       Mouse.move(pnt_dx, pnt_dy, -vr_scrl, hz_scrl); // reverse scrolling on android
+#ifdef DELTA_PRINT
       Serial.print("vr_scrl = ");
       Serial.print(vr_scrl);
       Serial.print("\thz_scrl = ");
@@ -296,6 +381,7 @@ void loop(void)
       Serial.print(pnt_dx);
       Serial.print("\tpnt_dy = ");
       Serial.println(pnt_dy);
+#endif
     }
     delay(sl_scrl);
     last_p = p;
