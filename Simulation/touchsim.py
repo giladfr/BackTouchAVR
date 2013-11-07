@@ -24,9 +24,10 @@ class TouchScreenSim(object):
         self.canvas = Canvas(self.root, width=dim_x, height = dim_y)
         self.canvas.pack()
         self.touch_pnt = self.canvas.create_oval(touch_lst[0][0] - self.radius,touch_lst[0][1] + self.radius ,touch_lst[0][0] + self.radius ,touch_lst[0][1] - self.radius , outline='yellow',fill='blue')
+        self.avg_touch_pnt = self.canvas.create_oval(touch_lst[0][0] - self.radius,touch_lst[0][1] + self.radius ,touch_lst[0][0] + self.radius ,touch_lst[0][1] - self.radius , outline='red',fill='',width=2)
         self.canvas.pack()
 
-        self.root.after(0, self.live)
+        self.root.after(0, self.animation)
         self.touch_lst_raw = touch_lst
         self.root.mainloop()
 
@@ -34,24 +35,92 @@ class TouchScreenSim(object):
         self.radius = (pressure - self.touch_pressure_min) * self.slope + self.radius_min
         #print "pressure = %d, radius = %d" %(pressure,self.radius)
 
-    def set_circ_center(self,x,y):
+    def set_circ_center(self,obj,x,y):
         # reverse y axis since on the screen it increased going down
         y = self.dim_y - y
-        self.canvas.coords(self.touch_pnt, x - self.radius,y + self.radius ,x + self.radius ,y - self.radius)
+        self.canvas.coords(obj, x - self.radius,y + self.radius ,x + self.radius ,y - self.radius)
 
     def animation(self):
-        for point in self.touch_lst_raw[1:]:
-            self.set_circ_center(point[0],point[1])
-            time.sleep(0.002)
+        for point in self.touch_lst_raw:
+            # Display of real touch point
+            self.set_radius_pressure(point[2])
+            self.set_circ_center(self.touch_pnt,point[0],point[1])
+
+            # Averaged touch point
+            avg_point = CalcMovingAvg_Median(Point(point[0],point[1],point[2]))
+            self.set_circ_center(self.avg_touch_pnt,avg_point.x,avg_point.y)
+
             self.canvas.update()
+            time.sleep(0.040)
 
     def live(self):
         while True:
             s = serial.Serial(port=serialPath, baudrate=9600)
             point = parse_cor_trio(s.readline())
             self.set_radius_pressure(point[2])
-            self.set_circ_center(point[0],point[1])
+            self.set_circ_center(self.touch_pnt,point[0],point[1])
             self.canvas.update()
+
+
+class Point(object):
+    def __init__(self,x = 0,y = 0,z = 0):
+        self.x = x
+        self.y = y
+        self.z = z
+
+AVG_NUM_OF_POINTS = 10
+pnt_arr = [Point() for i in range(AVG_NUM_OF_POINTS)]
+i = 0
+sum_x = 0
+sum_y = 0
+
+def CalcMovingAvg_Simple(inPnt):
+    global sum_x;
+    global sum_y;
+    global i;
+
+    retPnt = Point()
+    # Remove from sum the point in place i
+    sum_x = sum_x - pnt_arr[i].x;
+    sum_y = sum_y - pnt_arr[i].y;
+
+    # insert the current point
+    pnt_arr[i] = inPnt;
+
+    sum_x = sum_x + inPnt.x;
+    sum_y = sum_y + inPnt.y;
+
+    retPnt.x = sum_x / AVG_NUM_OF_POINTS;
+    retPnt.y = sum_y / AVG_NUM_OF_POINTS;
+
+    i+= 1
+    if (i == AVG_NUM_OF_POINTS): i=0
+    return retPnt;
+
+
+def median(mylist):
+    sorts = sorted(mylist)
+    length = len(sorts)
+    if not length % 2:
+        return (sorts[length / 2] + sorts[length / 2 - 1]) / 2.0
+    return sorts[length / 2]
+
+
+
+def CalcMovingAvg_Median(inPnt):
+    global i;
+
+    retPnt = Point()
+
+    # insert the current point
+    pnt_arr[i] = inPnt;
+
+    retPnt.x = median([j.x for j in pnt_arr]);
+    retPnt.y = median([j.y for j in pnt_arr]);
+
+    i+= 1
+    if (i == AVG_NUM_OF_POINTS): i=0
+    return retPnt;
 
 
 
