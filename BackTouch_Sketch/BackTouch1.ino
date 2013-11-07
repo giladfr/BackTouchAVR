@@ -32,6 +32,7 @@
 // Debug flags
 // #define TC_RAW_PRINT
 //#define DELTA_PRINT
+#define SEND_CLICK
 
 // For better pressure precision, we need to know the resistance
 // between X+ and X- Use any multimeter to read it
@@ -63,8 +64,15 @@ int cur_mode = MODE_POINTER; // default mode
 
 // Average array
 #define AVG_NUM_OF_POINTS 10
-Point pnt_arr[AVG_NUM_OF_POINTS];
+// Point pnt_arr[AVG_NUM_OF_POINTS];
 #define AVG_SMART_DELTA   5
+int x_arr[AVG_NUM_OF_POINTS];
+int y_arr[AVG_NUM_OF_POINTS];
+int z_arr[AVG_NUM_OF_POINTS];
+
+#define RELEASE_THRESHOLD_MILIS 100
+bool isFingerDown = false;
+int last_touch_time = 0;
 
 
 
@@ -129,29 +137,35 @@ void CalcMovment_Pointer(int dx, int dy,int* pnt_dx,int *pnt_dy)
 Point CalcMovingAvg_Simple(Point inPnt)
 {
   static int i = 0;
-  static int sum_x = 0;
-  static int sum_y = 0;
+  int sum_x = 0;
+  int sum_y = 0;
+  int n_not_zero = 0;
   Point retPnt;
 
-  // Remove from sum the point in place i
-  sum_x = sum_x - pnt_arr[i].x;
-  sum_y = sum_y - pnt_arr[i].y;
-
   // insert the current point
-  pnt_arr[i] = inPnt;
+  x_arr[i] = inPnt.x;
+  y_arr[i] = inPnt.y;
 
-  sum_x = sum_x + inPnt.x;
-  sum_y = sum_y + inPnt.y;
+  // Calc how many slots are not zero and the sum of them
+  for(int j = 0 ; j < AVG_NUM_OF_POINTS ; j++)
+  {
+    if (x_arr[j] != 0)
+    {
+      n_not_zero++;
+      sum_x = sum_x + x_arr[j];
+      sum_y = sum_y + y_arr[j];
+    } 
+  }
   
-  retPnt.x = sum_x / AVG_NUM_OF_POINTS;
-  retPnt.y = sum_y / AVG_NUM_OF_POINTS;
+  retPnt.x = sum_x / n_not_zero;
+  retPnt.y = sum_y / n_not_zero;
 
-  i++;
-  if (i == AVG_NUM_OF_POINTS) i=0;
+  if (++i == AVG_NUM_OF_POINTS) i=0;
 
   return retPnt;
 }
 
+/*
 // Assume movment is fluid and get rid of points more then a delta away
 Point CalcMovingAvg_Smart(Point inPnt)
 {
@@ -197,7 +211,7 @@ Point CalcMovingAvg_Smart(Point inPnt)
 
   return retPnt;
 }
-
+*/
 
 
 
@@ -268,10 +282,12 @@ int LCD_action()
     case MODE_SCROLL:
       lcd.print("SCROLL   ");
       dy_t = 5;
+      sl_scrl = 5;
       break;
     case MODE_POINTER:
       lcd.print("POINTER  ");
       dy_t = 1;
+      sl_scrl = 0;
       break;
     default:
       break;
@@ -294,10 +310,12 @@ void setup(void)
   digitalWrite(PIN_BACKLIGHT, HIGH);
 
   // Write welcome messege
-  lcd.print("BackTouch V0.1");
+  lcd.print("BackTouch V0.2");
   Serial.begin(9600);
   Mouse.begin();
 }
+
+
 
 void loop(void)
 {
@@ -311,29 +329,26 @@ void loop(void)
   // a point object holds x y and z coordinates
   Point p = ts.getPoint();
 
-
-// #ifdef DEBUG_TOUCH_SCREEN
-  // Serial.print("X = "); Serial.print(p.x);
-  // Serial.print("\tY = "); Serial.print(p.y);
-  // Serial.print("\tPressure = "); Serial.println(p.z);
-  // delay(100);
-// #endif
-
   LCD_action();
 
   // we have some minimum pressure we consider 'valid'
   // pressure of 0 means no pressing!
   if (p.z > ts.pressureThreshhold)
   {
-    // if (Mouse.isPressed(1) == 0)
-    // {
-    //   Mouse.press(1);
-    //   Serial.print("****Press****\n");
-    // }
+    if (isFingerDown == false)
+    {
+#ifdef SEND_CLICK
+      if (cur_mode == MODE_POINTER) Mouse.press(1);
+#endif
+#ifdef DELTA_PRINT
+       Serial.println("****Press****");
+#endif
+       isFingerDown = true;
+       last_p = p; // Last point is the same as this point so cursor starts where you left it. 
+       // last_p.x = 500;
+       // last_p.y = 500;
+    }
 
-    // Serial.print("X = "); Serial.print(p.x);
-    // Serial.print("\tY = "); Serial.print(p.y);
-    // Serial.print("\tPressure = "); Serial.println(p.z);
     lcd.setCursor(0,1);
     lcd.print("X");
     lcd.print(p.x);
@@ -344,7 +359,6 @@ void loop(void)
     lcd.print("  ");
 
     p = CalcMovingAvg_Simple(p);
-
 
     dx = last_p.x - p.x;
     dy = last_p.y - p.y;
@@ -385,17 +399,30 @@ void loop(void)
     }
     delay(sl_scrl);
     last_p = p;
+
+    last_touch_time = millis();
   }
   else //(p.z > ts.pressureThreshhold)
   {
-    // if (Mouse.isPressed(1))
-    // {
-    //   Mouse.release(1);
-    //   Serial.print("****Release****\n");
-
-    // }
-
-
+    if (isFingerDown == true)
+    {
+      int cur_time = millis();
+      if (cur_time - last_touch_time > RELEASE_THRESHOLD_MILIS)
+      {
+#ifdef SEND_CLICK
+        if (cur_mode == MODE_POINTER) Mouse.release(1);
+#endif
+#ifdef DELTA_PRINT
+        Serial.println("****Release****");
+#endif
+        isFingerDown = false;
+        // Clear all the static arrays and the last point       
+        memset(&x_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
+        memset(&y_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
+        memset(&z_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
+        memset(&last_p,0,sizeof(last_p));
+      }
+    }
   }
 
 }

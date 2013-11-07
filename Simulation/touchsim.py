@@ -27,7 +27,7 @@ class TouchScreenSim(object):
         self.avg_touch_pnt = self.canvas.create_oval(touch_lst[0][0] - self.radius,touch_lst[0][1] + self.radius ,touch_lst[0][0] + self.radius ,touch_lst[0][1] - self.radius , outline='red',fill='',width=2)
         self.canvas.pack()
 
-        self.root.after(0, self.animation)
+        self.root.after(0, self.live)
         self.touch_lst_raw = touch_lst
         self.root.mainloop()
 
@@ -40,26 +40,47 @@ class TouchScreenSim(object):
         y = self.dim_y - y
         self.canvas.coords(obj, x - self.radius,y + self.radius ,x + self.radius ,y - self.radius)
 
-    def animation(self):
+    def animation(self,is_live = FALSE):
+        last_point = 0
+        last_avg_point = 0
         for point in self.touch_lst_raw:
             # Display of real touch point
             self.set_radius_pressure(point[2])
             self.set_circ_center(self.touch_pnt,point[0],point[1])
 
             # Averaged touch point
-            avg_point = CalcMovingAvg_Median(Point(point[0],point[1],point[2]))
+            avg_point = CalcMovingAvg_Simple(Point(point[0],point[1],point[2]))
             self.set_circ_center(self.avg_touch_pnt,avg_point.x,avg_point.y)
+            if (last_point != 0):
+                self.canvas.create_line(last_point[0],self.dim_y - last_point[1],point[0],self.dim_y - point[1],fill="blue")
+                self.canvas.create_line(last_avg_point.x,self.dim_y - last_avg_point.y,avg_point.x,self.dim_y - avg_point.y,fill="red")
 
             self.canvas.update()
-            time.sleep(0.040)
+            #time.sleep(0.010)
+            last_point = point
+            last_avg_point = avg_point
 
     def live(self):
+        last_point = 0
+        last_avg_point = 0
+
         while True:
             s = serial.Serial(port=serialPath, baudrate=9600)
             point = parse_cor_trio(s.readline())
             self.set_radius_pressure(point[2])
             self.set_circ_center(self.touch_pnt,point[0],point[1])
+            # Averaged touch point
+            avg_point = CalcMovingAvg_Median(Point(point[0],point[1],point[2]))
+            self.set_circ_center(self.avg_touch_pnt,avg_point.x,avg_point.y)
+
+            if (last_point != 0):
+                self.canvas.create_line(last_point[0],self.dim_y - last_point[1],point[0],self.dim_y - point[1],fill="blue")
+                self.canvas.create_line(last_avg_point.x,self.dim_y - last_avg_point.y,avg_point.x,self.dim_y - avg_point.y,fill="red")
+
+
             self.canvas.update()
+            last_point = point
+            last_avg_point = avg_point
 
 
 class Point(object):
