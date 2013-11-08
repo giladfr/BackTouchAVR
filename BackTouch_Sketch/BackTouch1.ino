@@ -31,7 +31,7 @@
 
 // Debug flags
 // #define TC_RAW_PRINT
-//#define DELTA_PRINT
+// #define DELTA_PRINT
 #define SEND_CLICK
 
 // For better pressure precision, we need to know the resistance
@@ -129,7 +129,7 @@ void CalcMovment_Pointer(int dx, int dy,int* pnt_dx,int *pnt_dy)
   }
   *pnt_dx = 0;*/
   
-  *pnt_dx = -dx;
+  *pnt_dx = dx;
   *pnt_dy = dy;
 
 }
@@ -345,8 +345,6 @@ void loop(void)
 #endif
        isFingerDown = true;
        last_p = p; // Last point is the same as this point so cursor starts where you left it. 
-       // last_p.x = 500;
-       // last_p.y = 500;
     }
 
     lcd.setCursor(0,1);
@@ -421,6 +419,12 @@ void loop(void)
         memset(&y_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
         memset(&z_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
         memset(&last_p,0,sizeof(last_p));
+
+        // Bring the cursor back to the center
+        Mouse.move(127,127,0,0);
+        Mouse.move(127,127,0,0);
+        Mouse.move(-127,-127,0,0);
+
       }
     }
   }
