@@ -10,11 +10,18 @@
 // #define XP 9   // can be a digital pin (Red)
 
 
-// PIN defines
+// PIN defines - Blue 
 #define YP A5  // must be an analog pin, use "An" notation! (Blue)
 #define XM A2  // must be an analog pin, use "An" notation! (White)
 #define YM A4   // can be a digital pin (Purple)
 #define XP A3   // can be a digital pin (Red)#define PIN_BACKLIGHT    10
+
+// PIN Defines - Black
+// #define YP A3  // must be an analog pin, use "An" notation! (Blue)
+// #define XM A2  // must be an analog pin, use "An" notation! (White)
+// #define YM A1   // can be a digital pin (Purple)
+// #define XP A0   // can be a digital pin (Red)#define PIN_BACKLIGHT    10
+
 
 #define PIN_BACKLIGHT     10
 
@@ -159,6 +166,7 @@ Point CalcMovingAvg_Simple(Point inPnt)
   
   retPnt.x = sum_x / n_not_zero;
   retPnt.y = sum_y / n_not_zero;
+  retPnt.z = inPnt.z;
 
   if (++i == AVG_NUM_OF_POINTS) i=0;
 
@@ -335,17 +343,9 @@ void loop(void)
   // pressure of 0 means no pressing!
   if (p.z > ts.pressureThreshhold)
   {
-    if (isFingerDown == false)
-    {
-#ifdef SEND_CLICK
-      if (cur_mode == MODE_POINTER) Mouse.press(1);
-#endif
-#ifdef DELTA_PRINT
-       Serial.println("****Press****");
-#endif
-       isFingerDown = true;
-       last_p = p; // Last point is the same as this point so cursor starts where you left it. 
-    }
+
+    p = CalcMovingAvg_Simple(p);
+
 
     lcd.setCursor(0,1);
     lcd.print("X");
@@ -354,12 +354,13 @@ void loop(void)
     lcd.print(p.y);
     lcd.print(" Z");
     lcd.print(p.z);
-    lcd.print("  ");
+    lcd.print("    ");
 
     p = CalcMovingAvg_Simple(p);
 
     dx = last_p.x - p.x;
     dy = last_p.y - p.y;
+
 
 #ifdef DELTA_PRINT
     Serial.print("DX = ");
@@ -376,7 +377,9 @@ void loop(void)
     }
     else // POINTER MODE
     {
-      CalcMovment_Pointer(dx,dy,&pnt_dx,&pnt_dy);
+      //CalcMovment_Pointer(dx,dy,&pnt_dx,&pnt_dy);
+      pnt_dx = (1024 - p.x) >> 1;
+      pnt_dy = (1024 - p.y) >> 1;
       hz_scrl = 0;
       vr_scrl = 0;
     }
@@ -395,6 +398,26 @@ void loop(void)
       Serial.println(pnt_dy);
 #endif
     }
+
+    if (isFingerDown == false)
+    {
+#ifdef SEND_CLICK
+      if (cur_mode == MODE_POINTER) 
+      {
+        Mouse.press(7);
+        delay(1);
+        Mouse.release(7);
+        delay(1);
+        Mouse.press(7);
+      }
+#endif
+#ifdef DELTA_PRINT
+       Serial.println("****Press****");
+#endif
+       isFingerDown = true;
+       // last_p = p; // Last point is the same as this point so cursor starts where you left it. 
+    }
+
     delay(sl_scrl);
     last_p = p;
 
@@ -408,7 +431,7 @@ void loop(void)
       if (cur_time - last_touch_time > RELEASE_THRESHOLD_MILIS)
       {
 #ifdef SEND_CLICK
-        if (cur_mode == MODE_POINTER) Mouse.release(1);
+        if (cur_mode == MODE_POINTER) Mouse.release(7);
 #endif
 #ifdef DELTA_PRINT
         Serial.println("****Release****");
@@ -421,9 +444,9 @@ void loop(void)
         memset(&last_p,0,sizeof(last_p));
 
         // Bring the cursor back to the center
-        Mouse.move(127,127,0,0);
-        Mouse.move(127,127,0,0);
-        Mouse.move(-127,-127,0,0);
+        // Mouse.move(1024,1024,0,0);
+        // Mouse.move(1024,1024,0,0);
+        // Mouse.move(512,512,0,0);
 
       }
     }

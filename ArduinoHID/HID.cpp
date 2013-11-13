@@ -47,7 +47,7 @@ extern const u8 _hidReportDescriptor[] PROGMEM;
 const u8 _hidReportDescriptor[] = {
 	
 	//	Mouse
-   0x05, 0x01,        // USAGE_PAGE (Generic Desktop)
+/*   0x05, 0x01,        // USAGE_PAGE (Generic Desktop)
     0x09, 0x02,        // USAGE (Mouse)
     0xa1, 0x01,        // COLLECTION (Application)
     0x09, 0x02,        //   USAGE (Mouse)
@@ -120,6 +120,42 @@ const u8 _hidReportDescriptor[] = {
     0xc0,              //   END_COLLECTION
     0xc0,              // END_COLLECTION
 
+
+*/
+    0x05, 0x0d,                    // USAGE_PAGE (Digitizers)
+    0x09, 0x04,                    // USAGE (Touch Screen)
+    0xa1, 0x01,                    // COLLECTION (Application)
+    0x85, 0x01,                    //   REPORT_ID (1)
+    0x09, 0x20,                         //   USAGE (Stylus)
+    0xa1, 0x00,                         //   COLLECTION (Physical)
+
+	0x09, 0x42,           //       USAGE (Tip Switch)           
+    0x15, 0x00,           //       LOGICAL_MINIMUM (0)          
+    0x25, 0x01,           //       LOGICAL_MAXIMUM (1)          
+    0x75, 0x01,           //       REPORT_SIZE (1)              
+    0x95, 0x01,           //       REPORT_COUNT (1)             
+    0x81, 0x02,           //       INPUT (Data,Var,Abs)    
+    // 0x09, 0x32,    		  //       USAGE (In Range)             
+    // 0x81, 0x02,           //       INPUT (Data,Var,Abs)   
+    // 0x09, 0x47,   			//     USAGE (Touch Valid)
+    // 0x81, 0x02,   			//     INPUT (Data,Var,Abs)
+    0x95, 0x07,           //       REPORT_COUNT (7)  
+    0x81, 0x03,           //       INPUT (Cnst,Ary,Abs)   
+
+
+    0x05, 0x01,                    //     USAGE_PAGE (Generic Desktop)
+    0x15, 0x00,                    //     LOGICAL_MINIMUM (0)
+    0x26, 0xff, 0x03,              //     LOGICAL_MAXIMUM (255)
+    0x75, 0x10,                    //     REPORT_SIZE (8)
+    0x95, 0x01,                    //     REPORT_COUNT (1)
+    0x09, 0x30,                    //     USAGE (X)
+    0x81, 0x02,                    //     INPUT (Data,Var,Abs)
+    0x09, 0x31,                    //     USAGE (Y)
+    0x81, 0x02,                    //     INPUT (Data,Var,Abs)
+    0xc0,                          //     END_COLLECTION
+    0xc0,                           // END_COLLECTION
+
+/*
 	//	Keyboard
     0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)	// 47
     0x09, 0x06,                    // USAGE (Keyboard)
@@ -149,7 +185,7 @@ const u8 _hidReportDescriptor[] = {
     0x29, 0x65,                    //   USAGE_MAXIMUM (Keyboard Application)
     0x81, 0x00,                    //   INPUT (Data,Ary,Abs)
     0xc0,                          // END_COLLECTION
-
+*/
 #if RAWHID_ENABLED
 	//	RAW HID
 	0x06, LSB(RAWHID_USAGE_PAGE), MSB(RAWHID_USAGE_PAGE),	// 30
@@ -245,7 +281,7 @@ bool WEAK HID_Setup(Setup& setup)
 //================================================================================
 //	Mouse
 
-Mouse_::Mouse_(void) : _buttons(0)
+Mouse_::Mouse_(void) : _buttons(0),_x(0),_y(0)
 {
 }
 
@@ -260,29 +296,34 @@ void Mouse_::end(void)
 void Mouse_::click(uint8_t b)
 {
 	_buttons = b;
-	move(0,0,0);
+	move(0,0,0,0);
 	_buttons = 0;
-	move(0,0,0);
+	move(0,0,0,0);
 }
 
-void Mouse_::move(signed char x, signed char y, signed char wheel,signed char hwheel)
+void Mouse_::move(uint16_t x, uint16_t y, signed char wheel,signed char hwheel)
 {
+	_x = x;
+	_y = y;
 	u8 m[5];
 	m[0] = _buttons;
-	m[1] = x;
-	m[2] = y;
-	m[3] = wheel;
-	m[4] = hwheel;
+	m[1] = x & 0xFF;
+	m[2] = x >> 8;
+	m[3] = y & 0xFF;
+	m[4] = y >> 8;
+
+	//m[3] = wheel;
+	//m[4] = hwheel;
 	HID_SendReport(1,m,5);
 }
 
 void Mouse_::buttons(uint8_t b)
 {
-	if (b != _buttons)
-	{
+	// if (b != _buttons)
+	// {
 		_buttons = b;
-		move(0,0,0);
-	}
+		move(_x,_y,0,0);
+	// }
 }
 
 void Mouse_::press(uint8_t b) 
@@ -292,7 +333,17 @@ void Mouse_::press(uint8_t b)
 
 void Mouse_::release(uint8_t b)
 {
-	buttons(_buttons & ~b);
+	_buttons = 0;
+	u8 m[5];
+	m[0] = 6;
+	m[1] = _x & 0xFF;
+	m[2] = _x >> 8;
+	m[3] = _y & 0xFF;
+	m[4] = _y >> 8;
+
+	//m[3] = wheel;
+	//m[4] = hwheel;
+	HID_SendReport(1,m,5);
 }
 
 bool Mouse_::isPressed(uint8_t b)
