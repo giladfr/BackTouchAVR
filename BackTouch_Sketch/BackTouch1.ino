@@ -70,7 +70,7 @@ int x_arr[AVG_NUM_OF_POINTS];
 int y_arr[AVG_NUM_OF_POINTS];
 int z_arr[AVG_NUM_OF_POINTS];
 
-#define RELEASE_THRESHOLD_MILIS 100
+#define RELEASE_THRESHOLD_MILIS 200
 bool isFingerDown = false;
 int last_touch_time = 0;
 
@@ -159,6 +159,7 @@ Point CalcMovingAvg_Simple(Point inPnt)
   
   retPnt.x = sum_x / n_not_zero;
   retPnt.y = sum_y / n_not_zero;
+  retPnt.z = inPnt.z;
 
   if (++i == AVG_NUM_OF_POINTS) i=0;
 
@@ -423,7 +424,9 @@ void loop(void)
         // Bring the cursor back to the center
         Mouse.move(127,127,0,0);
         Mouse.move(127,127,0,0);
+        Mouse.move(127,127,0,0);
         Mouse.move(-127,-127,0,0);
+        Mouse.move(0,-50,0,0);
 
       }
     }
