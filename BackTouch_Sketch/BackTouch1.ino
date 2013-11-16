@@ -378,8 +378,8 @@ void loop(void)
     else // POINTER MODE
     {
       //CalcMovment_Pointer(dx,dy,&pnt_dx,&pnt_dy);
-      pnt_dx = (1024 - p.x) >> 1;
-      pnt_dy = (1024 - p.y) >> 1;
+      pnt_dx = (1024 - p.x);
+      pnt_dy = (1024 - p.y);
       hz_scrl = 0;
       vr_scrl = 0;
     }
@@ -405,10 +405,10 @@ void loop(void)
       if (cur_mode == MODE_POINTER) 
       {
         Mouse.press(7);
-        delay(1);
-        Mouse.release(7);
-        delay(1);
-        Mouse.press(7);
+        // delay(1);
+        // Mouse.release(7);
+        // delay(1);
+        // Mouse.press(7);
       }
 #endif
 #ifdef DELTA_PRINT

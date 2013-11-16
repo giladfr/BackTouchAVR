@@ -122,6 +122,7 @@ const u8 _hidReportDescriptor[] = {
 
 
 */
+
     0x05, 0x0d,                    // USAGE_PAGE (Digitizers)
     0x09, 0x04,                    // USAGE (Touch Screen)
     0xa1, 0x01,                    // COLLECTION (Application)
@@ -152,8 +153,11 @@ const u8 _hidReportDescriptor[] = {
     0x81, 0x02,                    //     INPUT (Data,Var,Abs)
     0x09, 0x31,                    //     USAGE (Y)
     0x81, 0x02,                    //     INPUT (Data,Var,Abs)
+
     0xc0,                          //     END_COLLECTION
-    0xc0,                           // END_COLLECTION
+    0xc0,                           // END_COLLECTION*/
+
+
 
 /*
 	//	Keyboard
@@ -335,7 +339,7 @@ void Mouse_::release(uint8_t b)
 {
 	_buttons = 0;
 	u8 m[5];
-	m[0] = 6;
+	m[0] = _buttons;
 	m[1] = _x & 0xFF;
 	m[2] = _x >> 8;
 	m[3] = _y & 0xFF;
