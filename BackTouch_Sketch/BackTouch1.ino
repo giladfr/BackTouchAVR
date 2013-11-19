@@ -9,18 +9,24 @@
 // #define YM 8   // can be a digital pin (Purple)
 // #define XP 9   // can be a digital pin (Red)
 
+// #define PLATFORM_MICRO
+#define PLATFORM_LEONARDO
 
 // PIN defines - Blue 
+#ifdef PLATFORM_LEONARDO
 #define YP A5  // must be an analog pin, use "An" notation! (Blue)
 #define XM A2  // must be an analog pin, use "An" notation! (White)
 #define YM A4   // can be a digital pin (Purple)
 #define XP A3   // can be a digital pin (Red)#define PIN_BACKLIGHT    10
+#endif
 
-// PIN Defines - Black
-// #define YP A3  // must be an analog pin, use "An" notation! (Blue)
-// #define XM A2  // must be an analog pin, use "An" notation! (White)
-// #define YM A1   // can be a digital pin (Purple)
-// #define XP A0   // can be a digital pin (Red)#define PIN_BACKLIGHT    10
+// PIN Defines - Pro Micro
+#ifdef PLATFORM_MICRO
+#define YP A3  // must be an analog pin, use "An" notation! (Blue)
+#define XM A0  // must be an analog pin, use "An" notation! (White)
+#define YM A2   // can be a digital pin (Purple)
+#define XP A1   // can be a digital pin (Red)#define PIN_BACKLIGHT    10
+#endif
 
 
 #define PIN_BACKLIGHT     10
@@ -312,6 +318,7 @@ int LCD_action()
 
 void setup(void)
 {
+#ifdef PLATFORM_LEONARDO
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
   pinMode(PIN_BACKLIGHT,  OUTPUT);
@@ -320,6 +327,8 @@ void setup(void)
   // Write welcome messege
   lcd.print("BackTouch V0.2");
   Serial.begin(9600);
+#endif
+
   Mouse.begin();
 }
 
@@ -337,16 +346,16 @@ void loop(void)
   // a point object holds x y and z coordinates
   Point p = ts.getPoint();
 
+#ifdef PLATFORM_LEONARDO
   LCD_action();
+#endif
 
   // we have some minimum pressure we consider 'valid'
   // pressure of 0 means no pressing!
   if (p.z > ts.pressureThreshhold)
   {
 
-    p = CalcMovingAvg_Simple(p);
-
-
+#ifdef PLATFORM_LEONARDO
     lcd.setCursor(0,1);
     lcd.print("X");
     lcd.print(p.x);
@@ -355,7 +364,8 @@ void loop(void)
     lcd.print(" Z");
     lcd.print(p.z);
     lcd.print("    ");
-
+#endif
+    
     p = CalcMovingAvg_Simple(p);
 
     dx = last_p.x - p.x;
