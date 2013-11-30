@@ -388,8 +388,8 @@ void loop(void)
     else // POINTER MODE
     {
       //CalcMovment_Pointer(dx,dy,&pnt_dx,&pnt_dy);
-      pnt_dx = (1024 - p.x);
-      pnt_dy = (1024 - p.y);
+      pnt_dx = (uint16_t)(-1.46 * (float)p.x + 1256);
+      pnt_dy = (uint16_t)(-1.27 * (float)p.y + 1150);
       hz_scrl = 0;
       vr_scrl = 0;
     }
