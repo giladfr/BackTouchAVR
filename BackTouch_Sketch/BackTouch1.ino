@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "TouchScreen.h"
 #include <LiquidCrystal.h>
+#include <Wire.h>
 
 
 // #define YP A2  // must be an analog pin, use "An" notation! (Blue)
@@ -9,7 +10,7 @@
 // #define YM 8   // can be a digital pin (Purple)
 // #define XP 9   // can be a digital pin (Red)
 
-// #define PLATFORM_MICRO
+ // #define PLATFORM_MICRO
 #define PLATFORM_LEONARDO
 
 // PIN defines - Blue 
@@ -76,7 +77,7 @@ int cur_mode = MODE_POINTER; // default mode
 
 
 // Average array
-#define AVG_NUM_OF_POINTS 10
+#define AVG_NUM_OF_POINTS 5
 // Point pnt_arr[AVG_NUM_OF_POINTS];
 #define AVG_SMART_DELTA   5
 int x_arr[AVG_NUM_OF_POINTS];
@@ -328,8 +329,39 @@ void setup(void)
   lcd.print("BackTouch V0.2");
   Serial.begin(9600);
 #endif
+  Wire.begin();        // join i2c bus (address optional for master)
 
   Mouse.begin();
+
+
+  pinMode(0,INPUT);
+
+}
+
+
+
+
+volatile char rawTouchPacket[6]; 
+
+void ReadTouchPacket()
+{
+
+  Wire.requestFrom(0x0A, 6);    // request 6 bytes from slave device #2
+  int i = 0;
+
+  while(Wire.available())    // slave may send less than requested
+  { 
+    rawTouchPacket[i++] = Wire.read(); // receive a byte as character
+  }
+
+}
+
+void ParseTouchPacket(int16_t *x, int16_t *y, int16_t *z,uint8_t *status)
+{
+  *status = rawTouchPacket[0] & 1;
+   *x = (rawTouchPacket[1]<<7) | rawTouchPacket[2];
+   *y = (rawTouchPacket[3]<<7) | rawTouchPacket[4];
+   *z = rawTouchPacket[5];
 }
 
 
@@ -344,7 +376,45 @@ void loop(void)
   int pnt_dy = 0;
   int pnt_dx = 0;
   // a point object holds x y and z coordinates
-  Point p = ts.getPoint();
+
+
+  // Point p = ts.getPoint();
+  Point p;
+  uint8_t s;
+  
+
+
+  int pinVal;
+
+  while(digitalRead(0) == 1)
+  {
+    if (isFingerDown == true)
+    {
+      int cur_time = millis();
+      if (cur_time - last_touch_time > RELEASE_THRESHOLD_MILIS)
+      {
+#ifdef SEND_CLICK
+        if (cur_mode == MODE_POINTER) Mouse.release(7);
+#endif
+#ifdef DELTA_PRINT
+        Serial.println("****Release****");
+#endif
+        isFingerDown = false;
+        // Clear all the static arrays and the last point       
+        memset(&x_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
+        memset(&y_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
+        memset(&z_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
+        memset(&last_p,0,sizeof(last_p));
+
+      }
+    }
+
+  };
+
+  ReadTouchPacket();
+  ParseTouchPacket(&p.x,&p.y,&p.z,&s);
+  // Serial.println(s);
+
 
 #ifdef PLATFORM_LEONARDO
   LCD_action();
@@ -352,7 +422,7 @@ void loop(void)
 
   // we have some minimum pressure we consider 'valid'
   // pressure of 0 means no pressing!
-  if (p.z > ts.pressureThreshhold)
+  if ((s == 1))
   {
 
 #ifdef PLATFORM_LEONARDO
@@ -366,7 +436,7 @@ void loop(void)
     lcd.print("    ");
 #endif
     
-    p = CalcMovingAvg_Simple(p);
+    // p = CalcMovingAvg_Simple(p);
 
     dx = last_p.x - p.x;
     dy = last_p.y - p.y;
@@ -388,8 +458,8 @@ void loop(void)
     else // POINTER MODE
     {
       //CalcMovment_Pointer(dx,dy,&pnt_dx,&pnt_dy);
-      pnt_dx = (uint16_t)(-1.46 * (float)p.x + 1256);
-      pnt_dy = (uint16_t)(-1.27 * (float)p.y + 1150);
+      pnt_dx = 1024 - (p.y>>1);//(uint16_t)(-1.46 * (float)p.x + 1256);
+      pnt_dy = p.x>>1;//(uint16_t)(-1.27 * (float)p.y + 1150);
       hz_scrl = 0;
       vr_scrl = 0;
     }
@@ -428,38 +498,13 @@ void loop(void)
        // last_p = p; // Last point is the same as this point so cursor starts where you left it. 
     }
 
-    delay(sl_scrl);
+    // delay(sl_scrl);
     last_p = p;
 
     last_touch_time = millis();
   }
   else //(p.z > ts.pressureThreshhold)
   {
-    if (isFingerDown == true)
-    {
-      int cur_time = millis();
-      if (cur_time - last_touch_time > RELEASE_THRESHOLD_MILIS)
-      {
-#ifdef SEND_CLICK
-        if (cur_mode == MODE_POINTER) Mouse.release(7);
-#endif
-#ifdef DELTA_PRINT
-        Serial.println("****Release****");
-#endif
-        isFingerDown = false;
-        // Clear all the static arrays and the last point       
-        memset(&x_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
-        memset(&y_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
-        memset(&z_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
-        memset(&last_p,0,sizeof(last_p));
-
-        // Bring the cursor back to the center
-        // Mouse.move(1024,1024,0,0);
-        // Mouse.move(1024,1024,0,0);
-        // Mouse.move(512,512,0,0);
-
-      }
-    }
   }
 
 }
