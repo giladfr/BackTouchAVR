@@ -1,4 +1,4 @@
-
+#include "Arduino.h"
 #include <stdint.h>
 #include "TouchScreen.h"
 #include <LiquidCrystal.h>
@@ -10,8 +10,8 @@
 // #define YM 8   // can be a digital pin (Purple)
 // #define XP 9   // can be a digital pin (Red)
 
- // #define PLATFORM_MICRO
-#define PLATFORM_LEONARDO
+ #define PLATFORM_MICRO
+// #define PLATFORM_LEONARDO
 
 // PIN defines - Blue 
 #ifdef PLATFORM_LEONARDO
@@ -31,7 +31,8 @@
 
 
 #define PIN_BACKLIGHT     10
-
+#define PIN_TS_INTERRUPT  0
+#define PIN_TS_RST        1
 
 
 // Button shield defines
@@ -334,7 +335,11 @@ void setup(void)
   Mouse.begin();
 
 
-  pinMode(0,INPUT);
+  pinMode(PIN_TS_INTERRUPT,INPUT);
+  pinMode(PIN_TS_RST,OUTPUT);
+  digitalWrite(PIN_TS_RST,HIGH);
+  delay(100);
+  digitalWrite(PIN_TS_RST,LOW);
 
 }
 
@@ -386,7 +391,7 @@ void loop(void)
 
   int pinVal;
 
-  while(digitalRead(0) == 1)
+  while(digitalRead(PIN_TS_INTERRUPT) == 1)
   {
     if (isFingerDown == true)
     {
