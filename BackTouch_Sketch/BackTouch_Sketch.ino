@@ -3,6 +3,16 @@
 #include "TouchScreen.h"
 #include <LiquidCrystal.h>
 #include <Wire.h>
+#include <stdio.h>
+#include "SoftI2C.h"
+
+static FILE uartout = {0} ;
+
+static int uart_putchar (char c, FILE *stream)
+{
+    Serial.write(c) ;
+    return 0 ;
+}
 
 
 // #define YP A2  // must be an analog pin, use "An" notation! (Blue)
@@ -55,6 +65,8 @@
 // TouchScreen ts = TouchScreen(XP, YP, XM, YM, 330);
 Point last_p;
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+SoftI2C softI2c = SoftI2C(2,3);
+
 
 
 
@@ -318,102 +330,150 @@ int LCD_action()
 
 void I2CWriteByte(char regAddr, char byteToWrite)
 {
-  Wire.beginTransmission(0x48);
-  Wire.write(regAddr);             // sends value byte  
-  Wire.write(byteToWrite);             // sends value byte  
-  Wire.endTransmission();     // stop transmitting
+  // Wire.beginTransmission(0x48);
+  // Wire.write(regAddr);             // sends value byte  
+  // Wire.write(byteToWrite);             // sends value byte  
+  // Wire.endTransmission();     // stop transmitting
+
+  softI2c.startWrite(0x48);
+  softI2c.write(regAddr);
+  softI2c.write(byteToWrite);
+  softI2c.endWrite();
+
 }
 
 void I2CWrite2Bytes(char regAddr, char firstByte, char secondByte)
 {
-  Wire.beginTransmission(0x48);
-  Wire.write(regAddr);             // sends value byte  
-  Wire.write(firstByte);             // sends value byte  
-  Wire.write(secondByte);             // sends value byte  
-  Wire.endTransmission();     // stop transmitting
+  // Wire.beginTransmission(0x48);
+  // Wire.write(regAddr);             // sends value byte  
+  // Wire.write(firstByte);             // sends value byte  
+  // Wire.write(secondByte);             // sends value byte  
+  // Wire.endTransmission();     // stop transmitting
+
+  softI2c.startWrite(0x48);
+  softI2c.write(regAddr);
+  softI2c.write(firstByte);             // sends value byte  
+  softI2c.write(secondByte);             // sends value byte  
+  softI2c.endWrite();
   
 }
 
+void I2CRead1Byte(char regAddr, uint8_t* pReadResult)
+{
+  softI2c.startWrite(0x48);
+  softI2c.write(regAddr);
+  softI2c.endWrite();
+  softI2c.startRead(0x48,1);
+  // while(softI2c.available())
+  pReadResult[0] = softI2c.read();
+}
 
-void FANALInit()
+void I2CRead2Bytes(char regAddr, uint8_t* pReadResult)
+{
+  softI2c.startWrite(0x48);
+  softI2c.write(regAddr);
+  softI2c.startRead(0x48,2);
+  pReadResult[0] = softI2c.read();
+  pReadResult[1] = softI2c.read();
+}
+
+void I2CRead4Bytes(char regAddr, uint8_t* pReadResult)
+{
+  softI2c.startWrite(0x48);
+  softI2c.write(regAddr);
+  softI2c.startRead(0x48,4);
+  pReadResult[0] = softI2c.read();
+  pReadResult[1] = softI2c.read();
+  pReadResult[2] = softI2c.read();
+  pReadResult[3] = softI2c.read();
+}
+
+void I2CRead5Bytes(char regAddr, uint8_t* pReadResult)
+{
+  softI2c.startWrite(0x48);
+  softI2c.write(regAddr);
+  softI2c.startRead(0x48,5);
+  pReadResult[0] = softI2c.read();
+  pReadResult[1] = softI2c.read();
+  pReadResult[2] = softI2c.read();
+  pReadResult[3] = softI2c.read();
+  pReadResult[4] = softI2c.read();
+}
+
+
+void FANALInit()  
 {
 
-  I2CWriteByte(0x04,0x00);
-  delay(300);
+I2CWriteByte(0x04,0x00);
 
-  I2CWriteByte(0x1F,0x00);
+delay(300);
+ I2CWriteByte(0x1F,0x00);
 
-  //Touch panel configuration 
-  I2CWriteByte(0x06,0xC);
-  I2CWriteByte(0x07,0x09);
+//Touch panel configuration
+ I2CWriteByte(0x06,0x0C);
+ I2CWriteByte(0x07,0x09);
+ I2CWrite2Bytes(0x08,0x00,0x87);
+ I2CWrite2Bytes(0x09,0x00,0x86);
+ I2CWrite2Bytes(0x0A,0x00,0x85);
+ I2CWrite2Bytes(0x0B,0x00,0x8B);
+ I2CWrite2Bytes(0x0C,0x00,0x8C);
+ I2CWrite2Bytes(0x0D,0x00,0x8D);
+ I2CWrite2Bytes(0x0E,0x00,0x8E);
+ I2CWrite2Bytes(0x0F,0x00,0x8F);
 
-  I2CWrite2Bytes(0x08,0x00,0x8A);
-  I2CWrite2Bytes(0x09,0x00,0x89);
-  I2CWrite2Bytes(0x0A,0x00,0x88);
-  I2CWrite2Bytes(0x0B,0x00,0x8B);
-  I2CWrite2Bytes(0x0C,0x00,0x8C);
-  I2CWrite2Bytes(0x0D,0x00,0x8D);
-  I2CWrite2Bytes(0x0E,0x00,0x8E);
-  I2CWrite2Bytes(0x0F,0x00,0x8F);
+I2CWrite2Bytes(0x10,0x00,0x90);
+ I2CWrite2Bytes(0x11,0x00,0x91);
+ I2CWrite2Bytes(0x12,0x00,0x92);
+ I2CWrite2Bytes(0x13,0x00,0x93);
+ I2CWrite2Bytes(0x14,0x00,0x94);
 
-  I2CWrite2Bytes(0x10,0x00,0x90);
-  I2CWrite2Bytes(0x11,0x00,0x91);
-  I2CWrite2Bytes(0x12,0x00,0x92);
-  I2CWrite2Bytes(0x13,0x00,0x93);
-  I2CWrite2Bytes(0x14,0x00,0x94);
+//SSD2532 analog setting
+ I2CWriteByte(0xD5,0x06);
+ I2CWriteByte(0xD8,0x07);
 
-  //SSD2532 analog setting 
-  I2CWriteByte(0xD5,0x07);
-  I2CWriteByte(0xD8,0x05);
+//Touch detection setting
+ I2CWriteByte(0x2A,0x07);
+ I2CWriteByte(0x2C,0x01);
+ I2CWriteByte(0x2E,0x0B);
+ I2CWriteByte(0x2F,0x01);
 
-  //Touch detection setting 
-  I2CWriteByte(0x2A,0x07);
-  I2CWriteByte(0x2C,0x01);
-  I2CWriteByte(0x2E,0x0B);
-  I2CWriteByte(0x2F,0x01);
+I2CWriteByte(0x30,0x03);
+ I2CWriteByte(0x31,0x07);
+ I2CWriteByte(0xD7,0x02);
+ I2CWriteByte(0xDB,0x02);
 
-  I2CWriteByte(0x30,0x03);
-  I2CWriteByte(0x31,0x07);
-  I2CWriteByte(0xD7,0x03);
-  I2CWriteByte(0xDB,0x02);
+//Finger recognition criteria
+ I2CWrite2Bytes(0x33,0x00,0x01);
+ I2CWrite2Bytes(0x34,0x00,0x48);
+ I2CWrite2Bytes(0x35,0x00,0x0F);
+ I2CWrite2Bytes(0x36,0x00,0x18);
 
-  //Finger recognition criteria 
-  I2CWrite2Bytes(0x33,0x00,0x02);
-  I2CWrite2Bytes(0x34,0x00,0x40);
-  I2CWrite2Bytes(0x35,0x00,0x00);
-  I2CWrite2Bytes(0x36,0xFF,0x36);
+I2CWriteByte(0x37,0x00);
+ I2CWriteByte(0x3D,0x01);
+ I2CWriteByte(0x53,0x16);
 
-  I2CWriteByte(0x37,0x00);
-  I2CWriteByte(0x3D,0x01);
-  I2CWriteByte(0x53,0x16);
+I2CWrite2Bytes(0x54,0x00,0x80);
+ I2CWrite2Bytes(0x55,0x00,0x80);
+ I2CWriteByte(0x56,0x02);
+ I2CWriteByte(0x58,0x00);
+ I2CWriteByte(0x59,0x01);
+ I2CWriteByte(0x5A,0x01);
+ I2CWriteByte(0x5B,0x03);
+ I2CWriteByte(0x65,0x00);
+ I2CWrite2Bytes(0x66,0x60,0x00);
+ I2CWrite2Bytes(0x67,0x62,0x70);
 
-  I2CWrite2Bytes(0x54,0x00,0x80);
+I2CWrite2Bytes(0x7A,0xFF,0xFF);
+ I2CWrite2Bytes(0x7B,0x00,0x03);
 
-  I2CWrite2Bytes(0x55,0x00,0x80);
+I2CWriteByte(0x89,0x00);
+ I2CWriteByte(0x8A,0x0A);
 
-  //Enable moving average filter to smooth fingers output coordinates
-  I2CWriteByte(0x56,0x02);
-  I2CWriteByte(0x58,0x00);
-  I2CWriteByte(0x59,0x01);
-  I2CWriteByte(0x5A,0x01);
-  I2CWriteByte(0x5B,0x03);
+I2CWriteByte(0x8B,0x10);
+ I2CWriteByte(0x8C,0xB0);
 
-  I2CWrite2Bytes(0x66,0x60,0x00);
-  I2CWrite2Bytes(0x67,0x62,0x70);
-
-  I2CWriteByte(0x8A,0x0A);
-
-  I2CWriteByte(0x8B,0x10);
-  I2CWriteByte(0x8C,0xB0);
-
-  I2CWriteByte(0x87,0x01);
-
-
-  // I2CWriteByte(0x23,0x00);
-  // delay(10);
-
-  I2CWriteByte(0x25,0x04);
-  delay(400);
+I2CWriteByte(0x25,0x02);
+ delay(400);
 
 }
 
@@ -421,6 +481,14 @@ void FANALInit()
 
 void setup(void)
 {
+
+
+   // fill in the UART file descriptor with pointer to writer.
+   fdev_setup_stream (&uartout, uart_putchar, NULL, _FDEV_SETUP_WRITE);
+
+   // The uart is the standard output device STDOUT.
+   stdout = &uartout ;
+
   #ifdef PLATFORM_LEONARDO
   // set up the LCD's number of columns and rows:
   // lcd.begin(16, 2);
@@ -431,9 +499,11 @@ void setup(void)
   // lcd.print("BackTouch V0.2");
   Serial.begin(9600);
   #endif
-  Wire.begin();        // join i2c bus (address optional for master)
+  // Wire.begin();        // join i2c bus (address optional for master)
 
   Mouse.begin();
+
+
 
 
   pinMode(PIN_TS_INTERRUPT,INPUT);
@@ -451,68 +521,38 @@ void setup(void)
 
 
 volatile char rawTouchPacket[5]; 
+uint8_t readArray[5];
 
 void ReadTouchPacket()
 {
+  // Wire.flipRW();
+  Wire.flush();
   Wire.beginTransmission(0x48);
   Wire.write(0x79);
   Wire.endTransmission();
-  Wire.requestFrom(0x48, 2);    
+  // delay(5);
   int i = 0;
+  Wire.requestFrom(0x48, 2);    
   while(Wire.available())    // slave may send less than requested
   { 
     rawTouchPacket[i++] = Wire.read(); // receive a byte as character
   }
+  Wire.flush();
 
+ 
 }
 
 void ParseTouchPacket(int16_t *x, int16_t *y, int16_t *z,uint8_t *status)
 {
-  *status = rawTouchPacket[0] & 1;
-  *x = (rawTouchPacket[1]<<7) | rawTouchPacket[2];
-  *y = (rawTouchPacket[3]<<7) | rawTouchPacket[4];
-  *z = rawTouchPacket[5];
+  *status = 1;
+  *x = ((readArray[2] & 0xF0) << 4) | readArray[0];
+  *y = ((readArray[2] & 0x0F) << 8) | readArray[1];
+  *z = 0;
 }
 
 
 
 void loop(void)
-{
-  I2CWriteByte(0x87,0x01);
-
-  delay(10);
-
-  Wire.beginTransmission(0x48);
-  Wire.write(0x79);
-  Wire.endTransmission();
-  Wire.requestFrom(0x48, 2);
-  Wire.read(); // receive a byte as character
-  Wire.read(); // receive a byte as character
-
-  delay(10);
-
-  Wire.beginTransmission(0x48);
-  Wire.write(0x79);
-  Wire.endTransmission();
-  Wire.requestFrom(0x48, 2);
-  Wire.read(); // receive a byte as character
-  Wire.read(); // receive a byte as character
-
-  delay(10);
-
-  Wire.beginTransmission(0x48);
-  Wire.write(0x79);
-  Wire.endTransmission();
-  Wire.requestFrom(0x48, 2);
-  Wire.read(); // receive a byte as character
-  Wire.read(); // receive a byte as character
-
-
-  delay(1000);
-
-}
-
-void loop1(void)
 {
   int dy = 0;
   int dx = 0;
@@ -532,46 +572,37 @@ void loop1(void)
 
   int pinVal;
 
-  // while(digitalRead(PIN_TS_INTERRUPT) == 1)
-  // {
-  //   if (isFingerDown == true)
-  //   {
-  //     int cur_time = millis();
-  //     if (cur_time - last_touch_time > RELEASE_THRESHOLD_MILIS)
-  //     {
-  //       #ifdef SEND_CLICK
-  //       if (cur_mode == MODE_POINTER) Mouse.release(7);
-  //       #endif
-  //       #ifdef DELTA_PRINT
-  //       Serial.println("****Release****");
-  //       #endif
-  //       isFingerDown = false;
-  //       // Clear all the static arrays and the last point       
-  //       memset(&x_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
-  //       memset(&y_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
-  //       memset(&z_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
-  //       memset(&last_p,0,sizeof(last_p));
+  while(digitalRead(PIN_TS_INTERRUPT) == 1)
+  {
+    if (isFingerDown == true)
+    {
+      int cur_time = millis();
+      if (cur_time - last_touch_time > RELEASE_THRESHOLD_MILIS)
+      {
+        #ifdef SEND_CLICK
+        if (cur_mode == MODE_POINTER) Mouse.release(7);
+        #endif
+        #ifdef DELTA_PRINT
+        Serial.println("****Release****");
+        #endif
+        isFingerDown = false;
+        // Clear all the static arrays and the last point       
+        memset(&x_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
+        memset(&y_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
+        memset(&z_arr,0,sizeof(int)*AVG_NUM_OF_POINTS);
+        memset(&last_p,0,sizeof(last_p));
 
-  //     }
-  //   }
+      }
+    }
+  }
 
-  // };
-
-  ReadTouchPacket();
-  // I2CWriteByte(0x86,0);
-
-
-  delay(1000);
-  // Serial.print(rawTouchPacket[0]);
-  // Serial.print(rawTouchPacket[1]);
-  // Serial.print(rawTouchPacket[2]);
-  // Serial.print(rawTouchPacket[3]);
-  // Serial.println(rawTouchPacket[4]);
-
-
-  return;
+  I2CRead4Bytes(0x7c,readArray);
   ParseTouchPacket(&p.x,&p.y,&p.z,&s);
-  // Serial.println(s);
+  // Serial.print(p.x);
+  // Serial.print(",");
+  // Serial.println(p.y);
+  // Seen some falses - dont process them
+  if ((p.x > 240) || (p.y > 320)) return;
 
 
   #ifdef PLATFORM_LEONARDO
@@ -616,8 +647,8 @@ void loop1(void)
     else // POINTER MODE
     {
       //CalcMovment_Pointer(dx,dy,&pnt_dx,&pnt_dy);
-      pnt_dx = 1024 - (p.y>>1);//(uint16_t)(-1.46 * (float)p.x + 1256);
-      pnt_dy = p.x>>1;//(uint16_t)(-1.27 * (float)p.y + 1150);
+      pnt_dx = 1024 - (p.x * (1024.0/240));
+      pnt_dy = p.y * (1024.0/320);
       hz_scrl = 0;
       vr_scrl = 0;
     }
